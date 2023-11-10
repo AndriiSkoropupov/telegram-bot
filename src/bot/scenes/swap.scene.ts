@@ -16,16 +16,20 @@ import { Context } from '../../interfaces/context.interface';
 
 @Scene(SWAP_SCENE_ID)
 export class SwapScene {
-  private buyMsg = null;
-  private sellMsg = null;
-  private sniperMsg = null;
-  private mainMsg = null;
+  private msgs = {};
 
   @SceneEnter()
   async onSceneEnter(@Ctx() ctx: Context): Promise<any> {
-    // this.sceneCleaner(ctx);
-    this.mainMsg = await ctx.reply(
-      `
+    const chatId = ctx.message.chat.id;
+    this.msgs[chatId] = {
+      buyMsg: null,
+      sellMsg: null,
+      sniperMsg: null,
+      mainMsg: null,
+    };
+    try {
+      this.msgs[chatId].mainMsg = await ctx.reply(
+        `
 🔁 Swap
 
 <code>0xF68db204C370B4E463f772EA17C8dC45EA251b13</code>
@@ -34,193 +38,193 @@ export class SwapScene {
     
 🔹 <a href="https://etherscan.io/address/0xF68db204C370B4E463f772EA17C8dC45EA251b13">Etherscan</a>  | 🔸 <a href="https://debank.com/profile/0xF68db204C370B4E463f772EA17C8dC45EA251b13">DeBank</a> ,
     `,
-      {
-        parse_mode: 'HTML',
-        disable_web_page_preview: true,
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: '📈Buy', callback_data: 'buy' },
-              { text: '📉Sell', callback_data: 'sell' },
+        {
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: '📈Buy', callback_data: 'buy' },
+                { text: '📉Sell', callback_data: 'sell' },
+              ],
+              [{ text: '🎯Sniper', callback_data: 'sniper' }],
             ],
-            [{ text: '🎯Sniper', callback_data: 'sniper' }],
-          ],
-          resize_keyboard: true,
+            resize_keyboard: true,
+          },
         },
-      },
-    );
+      );
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   @Hears(['🔎 Info'])
   @Command('info')
   async onInfo(@Ctx() ctx: Context): Promise<any> {
-    ctx.deleteMessage();
-    const forDelete = [];
-    if (this.buyMsg) {
-      forDelete.push(this.buyMsg);
-      this.buyMsg = null;
+    await this.clearAllMsg(ctx);
+    try {
+      await ctx.scene.enter(INFO_SCENE_ID);
+    } catch (error) {
+      console.log(error);
     }
-    if (this.sellMsg) {
-      forDelete.push(this.sellMsg);
-      this.sellMsg = null;
-    }
-    if (this.sniperMsg) {
-      forDelete.push(this.sniperMsg);
-      this.sniperMsg = null;
-    }
-    if (this.mainMsg) {
-      forDelete.push(this.mainMsg);
-      this.mainMsg = null;
-    }
-    if (forDelete.length > 0) {
-      ctx.scene.state['messages'] = forDelete;
-      await this.sceneCleaner(ctx);
-    }
-    await ctx.scene.enter(INFO_SCENE_ID);
   }
 
   @Command('wallet')
   @Hears(['💳 My Wallet'])
   async onWallet(@Ctx() ctx: Context): Promise<any> {
-    ctx.deleteMessage();
-    const forDelete = [];
-    if (this.buyMsg) {
-      forDelete.push(this.buyMsg);
-      this.buyMsg = null;
+    await this.clearAllMsg(ctx);
+    try {
+      await ctx.scene.enter(WALLET_SCENE_ID);
+    } catch (error) {
+      console.log(error);
     }
-    if (this.sellMsg) {
-      forDelete.push(this.sellMsg);
-      this.sellMsg = null;
-    }
-    if (this.sniperMsg) {
-      forDelete.push(this.sniperMsg);
-      this.sniperMsg = null;
-    }
-    if (this.mainMsg) {
-      forDelete.push(this.mainMsg);
-      this.mainMsg = null;
-    }
-    if (forDelete.length > 0) {
-      ctx.scene.state['messages'] = forDelete;
-      await this.sceneCleaner(ctx);
-    }
-    await ctx.scene.enter(WALLET_SCENE_ID);
   }
 
   @Command('loyalty')
   @Hears(['🎁 Loyalty'])
   async onLoyalty(@Ctx() ctx: Context): Promise<any> {
-    ctx.deleteMessage();
+    await this.clearAllMsg(ctx);
+    try {
+      await ctx.scene.enter(LOYALTY_SCENE_ID);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  @Command('swap')
+  @Hears(['🔁 Swap'])
+  async onSwap(@Ctx() ctx: Context): Promise<any> {
+    await this.clearAllMsg(ctx);
+    try {
+      await ctx.scene.reenter();
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  @Action(/buy/)
+  async onBuy(@Ctx() ctx: Context) {
+    await this.clearMsg(ctx);
+    const chatId = ctx.callbackQuery.message.chat.id;
+    try {
+      this.msgs[chatId].buyMsg = await ctx.reply(
+        'Send the address of a token you want to buy:',
+      );
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async clearAllMsg(@Ctx() ctx: Context) {
+    await ctx.deleteMessage();
+    const chatId = ctx.chat.id;
     const forDelete = [];
-    if (this.buyMsg) {
-      forDelete.push(this.buyMsg);
-      this.buyMsg = null;
+    if (this.msgs[chatId].buyMsg) {
+      forDelete.push(this.msgs[chatId].buyMsg);
+      this.msgs[chatId].buyMsg = null;
     }
-    if (this.sellMsg) {
-      forDelete.push(this.sellMsg);
-      this.sellMsg = null;
+    if (this.msgs[chatId].sellMsg) {
+      forDelete.push(this.msgs[chatId].sellMsg);
+      this.msgs[chatId].sellMsg = null;
     }
-    if (this.sniperMsg) {
-      forDelete.push(this.sniperMsg);
-      this.sniperMsg = null;
+    if (this.msgs[chatId].sniperMsg) {
+      forDelete.push(this.msgs[chatId].sniperMsg);
+      this.msgs[chatId].sniperMsg = null;
     }
-    if (this.mainMsg) {
-      forDelete.push(this.mainMsg);
-      this.mainMsg = null;
+    if (this.msgs[chatId].mainMsg) {
+      forDelete.push(this.msgs[chatId].mainMsg);
+      this.msgs[chatId].mainMsg = null;
     }
     if (forDelete.length > 0) {
       ctx.scene.state['messages'] = forDelete;
       await this.sceneCleaner(ctx);
     }
-    await ctx.scene.enter(LOYALTY_SCENE_ID);
   }
 
-  @Action(/buy/)
-  async onBuy(@Ctx() ctx: Context) {
-    if (this.buyMsg) {
-      await ctx.deleteMessage(this.buyMsg.message_id);
-      this.buyMsg = null;
+  async clearMsg(@Ctx() ctx: Context) {
+    const chatId = ctx.callbackQuery.message.chat.id;
+    try {
+      const forDelete = [];
+      if (this.msgs[chatId].buyMsg) {
+        forDelete.push(this.msgs[chatId].buyMsg);
+        this.msgs[chatId].buyMsg = null;
+      }
+      if (this.msgs[chatId].sellMsg) {
+        forDelete.push(this.msgs[chatId].sellMsg);
+        this.msgs[chatId].sellMsg = null;
+      }
+      if (this.msgs[chatId].sniperMsg) {
+        forDelete.push(this.msgs[chatId].sniperMsg);
+        this.msgs[chatId].sniperMsg = null;
+      }
+      if (forDelete.length > 0) {
+        ctx.scene.state['messages'] = forDelete;
+        await this.sceneCleaner(ctx);
+      }
+    } catch (error) {
+      console.log(error);
     }
-    if (this.sellMsg) {
-      await ctx.deleteMessage(this.sellMsg.message_id);
-      this.sellMsg = null;
-    }
-    if (this.sniperMsg) {
-      await ctx.deleteMessage(this.sniperMsg.message_id);
-      this.sniperMsg = null;
-    }
-    this.buyMsg = await ctx.reply(
-      'Send the address of a token you want to buy:',
-    );
   }
 
   @Action(/sell/)
   async onSell(@Ctx() ctx: Context) {
-    if (this.buyMsg) {
-      await ctx.deleteMessage(this.buyMsg.message_id);
-      this.buyMsg = null;
+    await this.clearMsg(ctx);
+    const chatId = ctx.callbackQuery.message.chat.id;
+    try {
+      this.msgs[chatId].sellMsg = await ctx.reply(
+        'Please import at least one token with none-zero balance',
+      );
+    } catch (error) {
+      console.log(error);
     }
-    if (this.sellMsg) {
-      await ctx.deleteMessage(this.sellMsg.message_id);
-      this.sellMsg = null;
-    }
-    if (this.sniperMsg) {
-      await ctx.deleteMessage(this.sniperMsg.message_id);
-      this.sniperMsg = null;
-    }
-    this.sellMsg = await ctx.reply(
-      'Please import at least one token with none-zero balance',
-    );
   }
 
   @Action(/sniper/)
   async onSniper(@Ctx() ctx: Context) {
-    if (this.buyMsg) {
-      await ctx.deleteMessage(this.buyMsg.message_id);
-      this.buyMsg = null;
-    }
-    if (this.sellMsg) {
-      await ctx.deleteMessage(this.sellMsg.message_id);
-      this.sellMsg = null;
-    }
-    if (this.sniperMsg) {
-      await ctx.deleteMessage(this.sniperMsg.message_id);
-      this.sniperMsg = null;
-    }
-    this.sniperMsg = await ctx.reply(
-      'Here you can create a new snipe or manage the existing ones.',
-      {
-        parse_mode: 'HTML',
-        disable_web_page_preview: true,
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: '🎯Create a new snipe', callback_data: 'create' }],
-            [{ text: '< Back', callback_data: 'back' }],
-          ],
-          resize_keyboard: true,
+    await this.clearMsg(ctx);
+    const chatId = ctx.callbackQuery.message.chat.id;
+    try {
+      this.msgs[chatId].sniperMsg = await ctx.reply(
+        'Here you can create a new snipe or manage the existing ones.',
+        {
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '🎯Create a new snipe', callback_data: 'create' }],
+              [{ text: '< Back', callback_data: 'back' }],
+            ],
+            resize_keyboard: true,
+          },
         },
-      },
-    );
+      );
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   @Action(/back/)
   async onBack(@Ctx() ctx: Context) {
-    if (this.sniperMsg) {
-      await ctx.deleteMessage(this.sniperMsg.message_id);
-      this.sniperMsg = null;
+    const chatId = ctx.callbackQuery.message.chat.id;
+    try {
+      if (this.msgs[chatId].sniperMsg) {
+        await ctx.deleteMessage(this.msgs[chatId].sniperMsg.message_id);
+        this.msgs[chatId].sniperMsg = null;
+      }
+    } catch (error) {
+      console.log(error);
     }
   }
 
   async sceneCleaner(@Ctx() ctx: Context) {
     if (ctx.scene.state['messages']) {
-      ctx.scene.state['messages'].forEach(({ message_id: id }) => {
+      for (const { message_id: id } of ctx.scene.state['messages']) {
         try {
-          console.log(id);
-          ctx.deleteMessage(id);
+          await ctx.deleteMessage(id);
         } catch (error) {
           console.log(error);
         }
-      });
+      }
       ctx.scene.state['messages'] = [];
     }
   }
